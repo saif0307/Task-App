@@ -22,23 +22,29 @@ Router.post('/tasks', auth, async (req, res) => {
 
 
 Router.get('/tasks', auth, async (req, res) => {
-    const match = {}
-    const sort = {}
-    if(req.query.completed) {
-        match.completed = req.query.completed === 'true'
-    }
-    if(req.query.sortBy) {
-        const [value, order] = req.query.sortBy.split(':') 
-        sort[value] = order === 'desc' ? -1 : 1
-    }
+    // The very basics of the needed options for populate
+	const populateOptions = { path: 'tasks', options: { sort: { createdAt: 1 } } }
+
+	// Only add match criteria if supplied
+	if (req.query.completed) {
+		populateOptions.match = {}
+		populateOptions.match.completed = (req.query.completed === 'true')
+	}
+
+	// Only add the sort data if it is supplied
+	if (req.query.sortBy) {
+		const parts = req.query.sortBy.split('_')
+		populateOptions.options.sort = {}
+		populateOptions.options.sort[parts[0]] = (parts[1] === 'desc') ? -1 : 1
+	}
+
+	// Only add the limit if a value is supplied
+	if (req.query.limit) { populateOptions.options.limit = parseInt(req.query.limit, 10) }
+
+	// Only add the skip if a value is provided
+	if (req.query.skip) { populateOptions.options.skip = parseInt(req.query.skip, 10) }
   try {
-     await req.user.populate({path:"tasks",
-      match,
-    options: {
-        limit: parseInt(req.query.limit),
-        skip:parseInt(req.query.skip),
-        sort
-    }})
+     await req.user.populate([populateOptions])
     res.send(req.user.tasks)
   } catch (err) {
       console.log(err)
